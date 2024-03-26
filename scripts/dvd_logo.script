@@ -1,10 +1,10 @@
 local speed = 100
 local move_delay = 1 -- Time in seconds before next move allowed
 local next_move_time = 0 -- When the next move is allowed
-local window_width = 1200 -- Assume game window width
-local window_height = 800 -- Assume game window height
-local logo_width = 2329*0.125 -- Width of the DVD logo sprite
-local logo_height = 1024*0.125 -- Height of the DVD logo sprite
+local window_width = 1200 
+local window_height = 800 
+local logo_width = 2329*0.125 -- Width of sprite
+local logo_height = 1024*0.125 -- Height of sprite
 local next_dir_change_time = 0 
 local valid_keypresses = 0
 local corner_hits = 0
@@ -23,11 +23,10 @@ function init(self)
 	local startYMin = logo_height / 2
 	local startYMax = window_height - (logo_height / 2)
 
-	-- Generate random starting position within valid ranges
+	-- Generate random starting position
 	local startX = math.random(startXMin, startXMax)
 	local startY = math.random(startYMin, startYMax)
 
-	-- Set the random starting position
 	self.position = vmath.vector3(startX, startY, 0)
 	go.set_position(self.position)
 
@@ -50,22 +49,19 @@ end
 
 
 local function playBounceSound()
-	sound.play("#wall")
-	--msg.post("#wall", "play_sound")  
+	sound.play("#wall")  
 end
 
 local function playWinSound()
 	sound.play("#win") 
-	--msg.post("#win", "play_sound") 
 end
 
 function update(self, dt)
 	local new_position = self.position + self.direction * speed * dt
 
-	-- Adjust for center-based positioning:
 	-- Left Wall Hit
 	if new_position.x - (logo_width / 2) <= 0 then
-		self.direction.x = -self.direction.x -- Reverse horizontal direction
+		self.direction.x = -self.direction.x
 		change_color()
 		wall_bounce_detected = true
 		print("Bounce off left wall")
@@ -75,31 +71,31 @@ function update(self, dt)
 
 	-- Right Wall Hit
 	if new_position.x + (logo_width / 2) >= window_width then
-		self.direction.x = -self.direction.x -- Reverse horizontal direction
+		self.direction.x = -self.direction.x 
 		change_color()
 		wall_bounce_detected = true
 		print("Bounce off right wall")
-		-- Adjust position to prevent sticking to the wall
+		-- Prevent sticking to the wall
 		new_position.x = window_width - (logo_width / 2)
 	end
 
 	-- Top Wall Hit
 	if new_position.y + (logo_height / 2) >= window_height then
-		self.direction.y = -self.direction.y -- Reverse vertical direction
+		self.direction.y = -self.direction.y 
 		change_color()
 		wall_bounce_detected = true
 		print("Bounce off top wall")
-		-- Adjust position to prevent sticking to the wall
+		-- Prevent sticking to the wall
 		new_position.y = window_height - (logo_height / 2)
 	end
 
 	-- Bottom Wall Hit
 	if new_position.y - (logo_height / 2) <= 0 then
-		self.direction.y = -self.direction.y -- Reverse vertical direction
+		self.direction.y = -self.direction.y 
 		change_color()
 		wall_bounce_detected = true
 		print("Bounce off bottom wall")
-		-- Adjust position to prevent sticking to the wall
+		-- Prevent sticking to the wall
 		new_position.y = logo_height / 2
 	end
 
@@ -145,7 +141,6 @@ end
 
 function on_input(self, action_id, action)
 	if action.pressed then
-		-- Determine the intended new direction based on the input
 		local new_direction = vmath.vector3(self.direction.x, self.direction.y, 0)
 		if action_id == hash("move_left") then
 			new_direction.x = -1
