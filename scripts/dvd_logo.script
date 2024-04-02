@@ -1,18 +1,34 @@
-local speed = 100
+local speed = 135
 local move_delay = 1 -- Time in seconds before next move allowed
-local next_move_time = 0 -- When the next move is allowed
-local window_width = 1200 
-local window_height = 800 
-local logo_width = 2329*0.125 -- Width of sprite
-local logo_height = 1024*0.125 -- Height of sprite
+local window_width = 1200 -- Assume game window width
+local window_height = 800 -- Assume game window height
+local logo_width = 2329*0.125 -- Width of the DVD logo sprite
+local logo_height = 1024*0.125 -- Height of the DVD logo sprite
 local next_dir_change_time = 0 
 local valid_keypresses = 0
 local corner_hits = 0
 local corner_tolerance = 4
 local corner_hit_registered = false
 local wall_bounce_detected = false
+local game_time_limit = 60 -- seconds
+local current_game_time = 0 -- Time elapsed since the game started
+local prevent_game = true
+
+local function js_listener(self, message_id, message)
+	if message_id == "PreventGame" then
+		prevent_game = message
+		print(message)
+		print("GOT MESSAGE!!!!!!!!!!")
+	end
+end
+
 
 function init(self)
+	if jstodef then
+		jstodef.add_listener(js_listener)
+		print("Added listener!!!!!!!!!!")
+	end
+	
 	math.randomseed(os.time())
 	print("Script attached and running")
 	msg.post(".", "acquire_input_focus") -- To receive input messages
@@ -23,10 +39,11 @@ function init(self)
 	local startYMin = logo_height / 2
 	local startYMax = window_height - (logo_height / 2)
 
-	-- Generate random starting position
+	-- Generate random starting position within valid ranges
 	local startX = math.random(startXMin, startXMax)
 	local startY = math.random(startYMin, startYMax)
 
+	-- Set the random starting position
 	self.position = vmath.vector3(startX, startY, 0)
 	go.set_position(self.position)
 
@@ -41,27 +58,62 @@ function final(self)
 end
 
 local function increment_corner_hits()
-	corner_hits = corner_hits + 1
-	if html5 then
-		html5.run("updateCornerHits(" .. tostring(corner_hits) .. ");")
+	if not prevent_game then
+		corner_hits = corner_hits + 1
+		if html5 then
+			print("SENT HIT")
+			html5.run("updateCornerHits(" .. tostring(corner_hits) .. ");")
+		end
 	end
 end
 
 
 local function playBounceSound()
-	sound.play("#wall")  
+	if not prevent_game then
+		sound.play("#wall")
+	end 
 end
 
 local function playWinSound()
-	sound.play("#win") 
+	if not prevent_game then
+		sound.play("#win") 
+	end 
+end
+
+
+local function final_score()
+	if html5 then
+		local jsCall = string.format("showFinalScore(%d, %d);", corner_hits, valid_keypresses)
+		html5.run(jsCall)
+	end
 end
 
 function update(self, dt)
+	if not prevent_game then
+		current_game_time = current_game_time + dt
+		local time_remaining = math.ceil(game_time_limit - current_game_time)
+
+		if html5 then
+			html5.run("updateTimerDisplay(" .. tostring(time_remaining) .. ");")
+		end
+		
+		if current_game_time >= game_time_limit then
+			print("Time's up! Corner hits: " .. tostring(corner_hits))
+			final_score()
+			current_game_time = 0
+			corner_hits = 0
+			valid_keypresses = 0
+
+			prevent_game = true -- to prevent player from continue playing in the background			
+		end
+			
+	end
+
 	local new_position = self.position + self.direction * speed * dt
 
 	-- Left Wall Hit
 	if new_position.x - (logo_width / 2) <= 0 then
-		self.direction.x = -self.direction.x
+		self.direction.x = -self.direction.x -- Reverse horizontal direction
 		change_color()
 		wall_bounce_detected = true
 		print("Bounce off left wall")
@@ -71,31 +123,31 @@ function update(self, dt)
 
 	-- Right Wall Hit
 	if new_position.x + (logo_width / 2) >= window_width then
-		self.direction.x = -self.direction.x 
+		self.direction.x = -self.direction.x -- Reverse horizontal direction
 		change_color()
 		wall_bounce_detected = true
 		print("Bounce off right wall")
-		-- Prevent sticking to the wall
+		-- Adjust position to prevent sticking to the wall
 		new_position.x = window_width - (logo_width / 2)
 	end
 
 	-- Top Wall Hit
 	if new_position.y + (logo_height / 2) >= window_height then
-		self.direction.y = -self.direction.y 
+		self.direction.y = -self.direction.y -- Reverse vertical direction
 		change_color()
 		wall_bounce_detected = true
 		print("Bounce off top wall")
-		-- Prevent sticking to the wall
+		-- Adjust position to prevent sticking to the wall
 		new_position.y = window_height - (logo_height / 2)
 	end
 
 	-- Bottom Wall Hit
 	if new_position.y - (logo_height / 2) <= 0 then
-		self.direction.y = -self.direction.y 
+		self.direction.y = -self.direction.y -- Reverse vertical direction
 		change_color()
 		wall_bounce_detected = true
 		print("Bounce off bottom wall")
-		-- Prevent sticking to the wall
+		-- Adjust position to prevent sticking to the wall
 		new_position.y = logo_height / 2
 	end
 
@@ -130,17 +182,21 @@ function update(self, dt)
 	-- Apply the new position after adjusting for bounces
 	self.position = new_position
 	go.set_position(self.position)
+
 end
 
 local function increment_valid_keypresses()
-	valid_keypresses = valid_keypresses + 1
-	if html5 then
-		html5.run("updateKeyPresses(" .. tostring(valid_keypresses) .. ");")
+	if not prevent_game then
+		valid_keypresses = valid_keypresses + 1
+		if html5 then
+			html5.run("updateKeyPresses(" .. tostring(valid_keypresses) .. ");")
+		end
 	end
 end
 
 function on_input(self, action_id, action)
-	if action.pressed then
+	if action.pressed and not prevent_game then
+		-- Determine the intended new direction based on the input
 		local new_direction = vmath.vector3(self.direction.x, self.direction.y, 0)
 		if action_id == hash("move_left") then
 			new_direction.x = -1
@@ -156,12 +212,16 @@ function on_input(self, action_id, action)
 		-- Check if the new direction is diagonally different from the current direction and if the move delay has passed
 		if os.clock() >= next_dir_change_time and (new_direction.x ~= self.direction.x or new_direction.y ~= self.direction.y) then
 			-- Update direction only if it's a valid diagonal move and different from the current direction
-			if new_direction.x ~= 0 and new_direction.y ~= 0 then
-				self.direction = new_direction
-				next_dir_change_time = os.clock() + move_delay -- Reset the delay timer for the next valid input
-				print("Direction changed")
+			self.direction = new_direction
+			next_dir_change_time = os.clock() + move_delay -- Reset the delay timer for the next valid input
+			print("Direction changed")
 
-				increment_valid_keypresses()
+			increment_valid_keypresses()
+		
+		-- Tries to change direction before the delay is up 
+		elseif os.clock() < next_dir_change_time and (new_direction.x ~= self.direction.x or new_direction.y ~= self.direction.y) then
+			if html5 then
+				html5.run("tooFast();")
 			end
 		end
 	end
@@ -177,12 +237,9 @@ function fixed_update(self, dt)
 	-- Remove this function if not needed
 end
 
-function on_message(self, message_id, message, sender)
-	-- Add message-handling code here
-	-- Learn more: https://defold.com/manuals/message-passing/
-	-- Remove this function if not needed
-end
 
+function on_message(self, message_id, message, sender)
+end
 
 
 function on_reload(self)
@@ -198,3 +255,8 @@ function change_color()
 	go.set("#logo2Sprite", "tint", new_color) 
 end
 
+function final(self)
+	if jstodef then
+		jstodef.remove_listener(js_listener)
+	end
+end

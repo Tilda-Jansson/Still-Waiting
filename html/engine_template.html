@@ -21,20 +21,6 @@
 		padding:0;
 	}
 
-	.canvas-app-container {
-		width: 100%;
-		height: 100%;
-		position: absolute;
-		align-items: center;
-		justify-content: center;
-		overflow: hidden;
-	}
-
-	.canvas-app-container:-webkit-full-screen {
-		/* Auto width and height in Safari/Chrome fullscreen. */
-		width: auto;
-		height: auto;
-	}
 
 	#canvas {
 		outline: none;
@@ -47,18 +33,10 @@
 		position: relative;
 	}
 
-	.buttons-background {
-		display: flex; 
-		align-items: center; 
-		justify-content: space-evenly; 
-		width: 100%;
-		padding: 5px; 
-	}
-
+	
 	/* Style for the score displays */
-	#keypressCount, #cornerHitCount {
+	#keypressCount, #cornerHitCount, #timerDisplay {
 		color: #fafcff;
-
 		font-family: sans-serif;
 		font-size: 14px;
 		font-weight: normal;
@@ -74,13 +52,6 @@
 		border: 0;
 		ie-dummy: expression(this.hideFocus=true);
 		-moz-outline-style: none;
-	}
-
-
-	.menuBtn {
-		color: #fafcff;
-		cursor: pointer;
-		margin-left: 2px;
 	}
 
 
@@ -114,6 +85,47 @@
 </head>
 
 <body>
+	<div id="initialsAlert" class="alertMsg">Please enter your initials before submitting!</div>
+	<div id="gameMsg" class="alertMsg">You can only move once per second!</div>
+	<div id="personalBest">Congratulations! You hit your personal best</div>
+
+	<div id="overlay" class="blur"></div> <!-- blur effect -->
+	<div id="howTo" style="display: none;">
+		<h1>How To Play?</h1>
+		<p>
+			Move the DVD logo into the corners using your <strong>WASD keys</strong> and try to get as many corner hits as you can within <strong>60 seconds</strong>! 
+			Each corner hit scores a point, but you can only make one move per second. 
+			Aim for precision and strategy to maximize your score with as few key presses as possible. <em>Good luck!</em>
+
+		</p>
+		<button id="start" onclick="startGame()">Play</button>
+	</div>
+	<div id="scoreDisplay" style="display: none;">
+		<h1>Your Score</h1>
+		<p id="finalScore">0</p>
+		<p id="finalKeyPresses">Key Presses: 0</p>
+		<div class="input-group">
+			<label for="playerInitials">Enter your initials:</label>
+			<input type="text" id="playerInitials" maxlength="6" />
+			<div class="buttons">
+				<button id="submitScoreButton" class="button" onclick="submitScore()">Submit</button>
+				<button class="button" onclick="reset()">Play again</button>
+			</div>
+		</div>
+	</div>
+
+
+	<div id="highScoresPopup">
+		<h1>High Scores</h1>
+		<div class="highscore-table" id="highScoresList">
+			<!-- High scores will be dynamically inserted here -->
+		</div>
+	</div>
+	
+	
+
+
+
 	<div id="app-container" class="canvas-app-container">
 		<div id="running-from-file-warning" style="display: none; margin: 3em;">
 			<h1>Running from local file ⚠️</h1>
@@ -128,15 +140,13 @@
 			<canvas id="canvas" class="canvas-app-canvas" tabindex="1" width="{{display.width}}" height="{{display.height}}"></canvas>
 		</div>
 		<div class="buttons-background">
-{{#html5.show_fullscreen_button}}
+<!-- {{#html5.show_fullscreen_button}}
 			<div class="button fullscreenBtn" onclick="Module.toggleFullscreen();">Fullscreen</div>
-{{/html5.show_fullscreen_button}}
-{{#html5.show_made_with_defold}}
-			<div class="link">Made with <a href="https://defold.com/" target="_blank">Defold</a></div>
-{{/html5.show_made_with_defold}}
+{{/html5.show_fullscreen_button}} -->
 	<!--	<div class="button menuBtn" id="menuBtn">Menu</div> -->
 			<div id="keypressCount">Valid Key Presses: 0</div>
     		<div id="cornerHitCount">Corner Hits: 0</div>
+			<div id="timerDisplay">Time Remaining: 60s</div>
 		</div>
 <!--	<div id="menuContent" style="display: none;">
 			<p>TODO</p>
@@ -144,6 +154,10 @@
 		</div> -->
 	</div>
 	<!-- -->
+
+
+
+
 	<script id='engine-loader' type='text/javascript' src="dmloader.js"></script>
 	<!-- -->
 	<script id='engine-setup' type='text/javascript'>
@@ -298,14 +312,285 @@
 			}
 		} */
 	</script>
+
+
 	<script>
 		function updateKeyPresses(count) {
 			document.getElementById('keypressCount').innerText = "Valid Key Presses: " + count;
 		}
+
+		function tooFast() {
+			var gameMsg = document.getElementById("gameMsg");
+			gameMsg.innerHTML = "You can only move once per second!";
+			gameMsg.style.display = "block";
+			gameMsg.style.opacity = "1";
+			gameMsg.style.color = "red";
+			setTimeout(function() {
+				gameMsg.style.opacity = "0";
+			}, 1500); // Keep visible before fading
+		}
+
 		
 		function updateCornerHits(count) {
 			document.getElementById('cornerHitCount').innerText = "Corner Hits: " + count;
 		}
-	</script>		
+
+		function updateTimerDisplay(timeRemaining) {
+			document.getElementById('timerDisplay').innerText = "Time Remaining: " + timeRemaining + "s";
+		}
+
+		function toggleScoreDisplay(show) {
+			document.getElementById('overlay').style.display = show ? 'block' : 'none';
+			document.getElementById('scoreDisplay').style.display = show ? 'block' : 'none';
+		}
+
+		async function submitScore() {
+			var initials = document.getElementById('playerInitials').value;
+			var scoreText = document.getElementById('finalScore').innerText; // text content of the element
+			var keyPressesText = document.getElementById('finalKeyPresses').innerText;
+			var alert = document.getElementById('initialsAlert');
+
+			if (!initials.trim()) {
+				alert.innerHTML = "Please enter your initials before submitting!";
+				alert.style.display = "block";
+				alert.style.opacity = "1";
+				alert.style.color = "red";
+				setTimeout(function() {
+					alert.style.opacity = "0";
+				}, 2750); // Keep visible before fading
+				return;
+			}
+			// extract just the numeric part from the string
+			var scoreMatches = scoreText.match(/\d+/);
+			var keyPressesMatches = keyPressesText.match(/\d+/);
+
+			var score = scoreMatches ? parseInt(scoreMatches[0], 10) : 0;
+			var keyPresses = keyPressesMatches ? parseInt(keyPressesMatches[0], 10) : 0;
+
+			// Wait for the personal record check to complete
+			try {
+				const isNewPersonalBest = await checkPersonalRecord(initials, score, keyPresses);
+				if (isNewPersonalBest) {
+					displayPersonalRecordPopup();
+				}
+
+				console.log("Submitting score:", score, "for player:", initials, "with key presses:", keyPresses);
+
+				var submitButton = document.getElementById('submitScoreButton');
+
+				if (submitButton.disabled) {
+					console.log("Score has already been submitted.");
+					return; 
+				}
+
+				// Prepare data to be sent to the server
+				var data = new FormData();
+				data.append('initials', initials);
+				data.append('score', score); 
+				data.append('keyPresses', keyPresses);
+
+				// AJAX request to send the data
+				var xhr = new XMLHttpRequest();
+				xhr.open('POST', 'https://stillwaiting.fun/submit_score.php', true);
+
+				// Called when the request is completed
+				xhr.onload = function () {
+					if (xhr.status >= 200 && xhr.status < 300) {
+						// Request was successful
+						console.log('Score submitted successfully:', xhr.responseText);
+						fetchHighScores();
+						// Cannot submit more than once per game!
+						submitButton.disabled = true;
+						submitButton.style.opacity = '0.5';
+						submitButton.style.cursor = 'not-allowed';
+
+
+					} else {
+						// Request failed
+						console.error('Error submitting score:', xhr.statusText);
+					}
+				};
+
+				// Send the request
+				xhr.send(data);
+
+			} catch (error) {
+				console.error('Error during personal record check or score submission:', error);
+			}
+		}
+
+		function reset(){
+			toggleScoreDisplay(false);
+			document.getElementById('highScoresPopup').style.display = 'none';
+			if (typeof JsToDef !== 'undefined') {
+    			JsToDef.send("PreventGame", false);
+			}
+			updateCornerHits(0);
+			updateKeyPresses(0);
+			updateTimerDisplay(0);
+			document.getElementById('canvas').focus();
+
+			var submitButton = document.getElementById('submitScoreButton');
+			submitButton.disabled = false;
+			submitButton.style.opacity = '1';
+			submitButton.style.cursor = 'pointer';
+
+			var playerInitialsInput = document.getElementById('playerInitials');
+			playerInitialsInput.disabled = false;
+			playerInitialsInput.style.opacity = '1';
+			playerInitialsInput.style.cursor = 'pointer';
+			playerInitialsInput.value = '';
+
+		}
+
+		function toggleInstructions(show) {
+			document.getElementById('howTo').style.display = show ? 'block' : 'none';
+			document.getElementById('overlay').style.display = show ? 'block' : 'none';
+		}
+
+		function showFinalScore(score, keyPresses) {
+			document.getElementById('finalScore').innerText = "Score: " + score;
+			document.getElementById('finalKeyPresses').innerText = "Key Presses: " + keyPresses;
+
+			var playerInitialsInput = document.getElementById('playerInitials');
+			var submitButton = document.getElementById('submitScoreButton');
+
+			if (score === 0) {
+				// Disable input and button if score is 0
+				playerInitialsInput.disabled = true;
+				submitButton.disabled = true;
+				playerInitialsInput.style.opacity = '0.5';
+				submitButton.style.opacity = '0.5';
+				submitButton.style.cursor = 'not-allowed';
+				playerInitialsInput.style.cursor = 'not-allowed';
+			}
+
+			toggleScoreDisplay(true);
+			fetchHighScores();
+		}
+
+
+
+		function fetchHighScores() {
+			// AJAX request to get the high scores
+			var xhr = new XMLHttpRequest();
+			xhr.open('GET', 'https://stillwaiting.fun/get_high_scores.php', true);
+
+			xhr.onload = function () {
+				if (xhr.status >= 200 && xhr.status < 300) {
+					// Request was successful
+					var highScores = JSON.parse(xhr.responseText);
+					displayHighScores(highScores);
+				} else {
+					// Request failed
+					console.error('Error fetching high scores:', xhr.statusText);
+				}
+			};
+
+			// Send the request
+			xhr.send();
+		}
+
+		function displayHighScores(highScores) {
+			var list = document.getElementById('highScoresList');
+			list.innerHTML = '<div class="highscore-table-row highscore-table-header"><div>Place</div><div>Score</div><div>Key Presses</div><div>Names</div></div>';
+			
+			highScores.forEach(function(score, index) {
+				var row = document.createElement('div');
+				row.className = 'highscore-table-row';
+				row.innerHTML = `<div class="highscore-table-cell place">${index + 1}</div>
+								<div class="highscore-table-cell score">${score.score}</div>
+								<div class="highscore-table-cell keyPresses">${score.key_presses}</div>
+								<div class="highscore-table-cell names">${score.initials}</div>`;
+				list.appendChild(row);
+			});
+			
+			document.getElementById('highScoresPopup').style.display = 'block'; // Show the high scores pop-up
+		}
+
+		function checkPersonalRecord(playerInitials, newScore, newKeyPresses) {
+			return new Promise((resolve, reject) => {
+				var xhr = new XMLHttpRequest();
+				xhr.open('GET', `https://stillwaiting.fun/fetchpersonalrecord.php?initials=${encodeURIComponent(playerInitials)}`, true);
+				
+				xhr.onload = function() {
+					if (xhr.status >= 200 && xhr.status < 300) {
+						var data = JSON.parse(xhr.responseText);
+						var personalBestScore = data.personalBestScore;
+						var leastKeyPressesForBestScore = data.leastKeyPressesForBestScore;
+						
+						console.log('Personal best score:', personalBestScore, 'Least key presses for best score:', leastKeyPressesForBestScore);
+						if (personalBestScore == null){
+							resolve(false);
+							console.log('NO PREVIOUS RECORD')
+						}
+						else if (newScore > personalBestScore || (newScore === personalBestScore && newKeyPresses < leastKeyPressesForBestScore)) {
+							// The new score is a personal best, either by score or by fewer key presses for the same score
+							console.log('NEW PERSONAL BEST');
+							resolve(true);
+						} 
+						else {
+							// The new score is not a personal best
+							resolve(false);
+						}
+					} else {
+						reject(new Error('Error fetching personal high score:', xhr.statusText));
+					}
+				};
+				
+				xhr.onerror = function() {
+					reject(new Error('Network error while fetching personal high score'));
+				};
+				
+				xhr.send();
+			});
+		}
+
+
+		function displayPersonalRecordPopup() {
+			var personalBest = document.getElementById("personalBest");
+			personalBest.innerHTML = "Congratulations! You hit your personal best";
+			personalBest.style.display = "block";
+			personalBest.style.opacity = "1";
+			setTimeout(function() {
+				personalBest.style.opacity = "0";
+			}, 2000); 
+
+			party.sparkles(personalBest, {
+				count: party.variation.range(30, 60),
+				speed: party.variation.range(200, 300),
+				size: party.variation.range(0.8, 2), 
+        		rotation: () => new party.Vector(0, 0, party.random.randomRange(0, 360)),
+				lifetime: party.variation.range(2, 3),
+				color: [
+				party.Color.fromHex("#ff7b7b"), 
+				party.Color.fromHex("#ff7bbd"), 
+				party.Color.fromHex("#ff7bff"), 
+				party.Color.fromHex("#7b7bff"), 
+				party.Color.fromHex("#7bbdff"), 
+				party.Color.fromHex("#7bffff"), 
+				party.Color.fromHex("#7bff7b"), 
+				party.Color.fromHex("#bdff7b"), 
+				party.Color.fromHex("#ffff7b"), 
+				party.Color.fromHex("#ffbd7b"), 
+				party.Color.fromHex("#ff7b7b")
+			]
+			});
+		}
+
+
+		function startGame() {
+			toggleInstructions(false);
+			reset();
+		}
+
+		window.onload = function() {
+			toggleInstructions(true);
+		};
+	</script>
+	<script src="https://cdn.jsdelivr.net/npm/party-js@latest/bundle/party.min.js"></script>
+
+
+	
 </body>
 </html>
