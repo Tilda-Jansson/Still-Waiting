@@ -1,0 +1,24 @@
+[bootstrap]
+main_collection = /main/main.collectionc
+
+[script]
+shared_state = 1
+
+[display]
+width = 1200
+height = 800
+fullscreen = 0
+
+[android]
+input_method = HiddenInputField
+
+[project]
+title = DVD-Logo
+
+[html5]
+scale_mode = fit
+htmlfile = /html/engine_template.html
+show_made_with_defold = 0
+show_console_banner = 0
+cssfile = /dark_theme.css
+
