@@ -87,7 +87,8 @@
 <body>
 	<div id="initialsAlert" class="alertMsg">Please enter your initials before submitting!</div>
 	<div id="gameMsg" class="alertMsg">You can only move once per second!</div>
-	<div id="personalBest">Congratulations! You hit your personal best</div>
+	<div id="personalBest" class="bestScore">Congratulations! You hit your personal best</div>
+	<div id="bestOverall" class="bestScore">WOHO! You hit high score!:D</div>
 
 	<div id="overlay" class="blur"></div> <!-- blur effect -->
 	<div id="howTo" style="display: none;">
@@ -369,9 +370,16 @@
 
 			// Wait for the personal record check to complete
 			try {
-				const isNewPersonalBest = await checkPersonalRecord(initials, score, keyPresses);
-				if (isNewPersonalBest) {
-					displayPersonalRecordPopup();
+				var isNewBest = await checkPersonalRecord(initials, score, keyPresses);
+				switch(isNewBest) {
+					case 1:
+						displayPersonalRecordPopup();
+						break;
+					case 2:
+						displayBestOverallPopup();
+						break;
+					default:
+						break;
 				}
 
 				console.log("Submitting score:", score, "for player:", initials, "with key presses:", keyPresses);
@@ -518,20 +526,33 @@
 						var data = JSON.parse(xhr.responseText);
 						var personalBestScore = data.personalBestScore;
 						var leastKeyPressesForBestScore = data.leastKeyPressesForBestScore;
+
+						var overallHighScore = data.overallHighScore;
+						var overallLeastKeyPresses = data.overallLeastKeyPresses;
+						console.log('Best score OVERALL:', overallHighScore, 'Least key presses for best OVERALL score:', overallLeastKeyPresses);
 						
 						console.log('Personal best score:', personalBestScore, 'Least key presses for best score:', leastKeyPressesForBestScore);
-						if (personalBestScore == null){
-							resolve(false);
-							console.log('NO PREVIOUS RECORD')
+
+						if (overallHighScore == null){
+							resolve(0);
+							console.log('NO PREVIOUS HIGH SCORE RECORD');
+						}
+						else if (newScore > overallHighScore  || (newScore === overallHighScore && newKeyPresses < overallLeastKeyPresses)){
+							console.log('BEST OVERALL HIGHSCORE');
+							resolve(2);
+						}
+						else if (personalBestScore == null){
+							resolve(0);
+							console.log('NO PREVIOUS RECORD');
 						}
 						else if (newScore > personalBestScore || (newScore === personalBestScore && newKeyPresses < leastKeyPressesForBestScore)) {
 							// The new score is a personal best, either by score or by fewer key presses for the same score
 							console.log('NEW PERSONAL BEST');
-							resolve(true);
+							resolve(1);
 						} 
 						else {
 							// The new score is not a personal best
-							resolve(false);
+							resolve(0);
 						}
 					} else {
 						reject(new Error('Error fetching personal high score:', xhr.statusText));
@@ -577,6 +598,44 @@
 			]
 			});
 		}
+
+		function displayBestOverallPopup() {
+			party.confetti(party.Rect.fromScreen(), {
+				shapes: ["star"],
+				count: 350 * (window.innerWidth / 1980),
+                countVariation: 0.5,
+				angleSpan: 0,
+				yVelocity: -80,
+				yVelocityVariation: 10,
+				scaleVariation: 0.3,
+				size: party.variation.range(1, 1.5),
+				rotation: () => new party.Vector(0, 0, party.random.randomRange(0, 360)),
+				color: [
+				party.Color.fromHex("#ff7b7b"), 
+				party.Color.fromHex("#ff7bbd"), 
+				party.Color.fromHex("#ff7bff"), 
+				party.Color.fromHex("#7b7bff"), 
+				party.Color.fromHex("#7bbdff"), 
+				party.Color.fromHex("#7bffff"), 
+				party.Color.fromHex("#7bff7b"), 
+				party.Color.fromHex("#bdff7b"), 
+				party.Color.fromHex("#ffff7b"), 
+				party.Color.fromHex("#ffbd7b"), 
+				party.Color.fromHex("#ff7b7b")
+			]
+			});
+
+			var bestOverall = document.getElementById("bestOverall");
+			bestOverall.innerHTML = "WOHO! You hit high score!:D";
+			bestOverall.style.display = "block";
+			bestOverall.style.opacity = "1";
+			setTimeout(function() {
+				bestOverall.style.opacity = "0";
+			}, 5000); 
+
+			
+		}
+
 
 
 		function startGame() {

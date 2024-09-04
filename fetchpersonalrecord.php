@@ -1,8 +1,8 @@
-<?php
-$dbHost = '?';
-$dbName = '?';
-$dbUsername = '?';
-$dbPassword = '?';
+ <?php
+$dbHost = 'localhost';
+$dbName = '...';
+$dbUsername = '...';
+$dbPassword = '...';
 
 // Create database connection
 $conn = new mysqli($dbHost, $dbUsername, $dbPassword, $dbName);
@@ -17,6 +17,18 @@ $playerInitials = isset($_GET['initials']) ? $conn->real_escape_string($_GET['in
 
 $personalBestScore = null;
 $leastKeyPressesForBestScore = null;
+$overallHighScore = null;
+$overallLeastKeyPresses = null;
+
+// Fetch the highest score overall
+$sqlOverallHighScore = "SELECT score, key_presses FROM high_scores ORDER BY score DESC, key_presses ASC LIMIT 1;";
+//$sqlOverallHighScore = "SELECT score, MIN(key_presses) AS least_key_presses FROM high_scores GROUP BY score ORDER BY score DESC, least_key_presses ASC LIMIT 1";
+$resultOverallHighScore = $conn->query($sqlOverallHighScore);
+if ($resultRow = $resultOverallHighScore->fetch_assoc()) {
+    $overallHighScore = $resultRow['score'];
+    $overallLeastKeyPresses = $resultRow['key_presses'];
+}
+
 
 if ($playerInitials !== '') {
     // SQL query to fetch the highest score and the least key presses for that score for the given player
@@ -45,7 +57,9 @@ $conn->close();
 
 $response = [
     'personalBestScore' => $personalBestScore,
-    'leastKeyPressesForBestScore' => $leastKeyPressesForBestScore
+    'leastKeyPressesForBestScore' => $leastKeyPressesForBestScore,
+    'overallHighScore' => $overallHighScore,
+    'overallLeastKeyPresses' => $overallLeastKeyPresses
 ];
 
 header('Content-Type: application/json');
