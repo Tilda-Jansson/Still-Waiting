@@ -18,6 +18,7 @@ To submit a score, the player must enter their initials (up to 6 characters) and
 
 I wanted to familiarise myself with Lua so I made this game over the course of 5 days with this [song](https://www.youtube.com/watch?v=_ws0QtAiiXQ) as my source of inspiration. **Note that this game is a work in progress**
 
+![GamePlay](img/firefox_7kFvsGcXo6.gif)
 
 ## Latest Additions
 - Highscore Board: A real-time leaderboard showcases the top 10 players, made possible through by SQL database integration.
