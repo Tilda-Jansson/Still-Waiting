@@ -1,7 +1,7 @@
 <?php
 $dbHost = ''; 
-$dbName = '';
-$dbUsername = ''; 
+$dbName = ''; 
+$dbUsername = '';
 $dbPassword = ''; 
 
 // Create database connection

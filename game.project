@@ -14,7 +14,7 @@ input_method = HiddenInputField
 
 [project]
 title = DVD-Logo
-dependencies#0 = https://github.com/AGulev/jstodef/archive/master.zip
+dependencies#0 = https://github.com/AGulev/jstodef/archive/refs/tags/2.0.0.zip
 
 [html5]
 scale_mode = fit

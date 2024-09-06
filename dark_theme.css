@@ -267,7 +267,7 @@
 		z-index: 10001; 
 	}
 
-	#personalBest {
+	.bestScore {
 		top: 10%;
 		left: 50%; /* Center horizontally */
 		transform: translate(-50%, -50%); /* Adjust for exact centering */
@@ -275,7 +275,7 @@
 		opacity: 0; /* Start invisible */
 		padding: 10px 20px; 
 		border-radius: 20px;
-		background-color: rgba(59, 59, 59, 0.9);
+		background-color: rgba(231, 82, 201, 0.9);
 		font-family: Arial, sans-serif;
 		font-size: 18px; 
 		color: white;

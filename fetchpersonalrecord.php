@@ -1,8 +1,9 @@
 <?php
-$dbHost = '';
-$dbName = '';
+
+$dbHost = ''; 
+$dbName = ''; 
 $dbUsername = '';
-$dbPassword = '';
+$dbPassword = ''; 
 
 // Create database connection
 $conn = new mysqli($dbHost, $dbUsername, $dbPassword, $dbName);
@@ -17,6 +18,21 @@ $playerInitials = isset($_GET['initials']) ? $conn->real_escape_string($_GET['in
 
 $personalBestScore = null;
 $leastKeyPressesForBestScore = null;
+$overallHighScore = null;
+$overallLeastKeyPresses = null;
+
+// Fetch the highest score overall
+$sqlOverallHighScore = "SELECT score, key_presses FROM high_scores ORDER BY score DESC, key_presses ASC LIMIT 1;";
+$resultOverallHighScore = $conn->query($sqlOverallHighScore);
+
+if ($resultOverallHighScore) {
+    if ($resultRow = $resultOverallHighScore->fetch_assoc()) {
+        $overallHighScore = $resultRow['score'];
+        $overallLeastKeyPresses = $resultRow['key_presses'];
+    }
+} else {
+    die("Error fetching overall high score: " . $conn->error);
+}
 
 if ($playerInitials !== '') {
     // SQL query to fetch the highest score and the least key presses for that score for the given player
@@ -29,26 +45,35 @@ if ($playerInitials !== '') {
 
     // Prepare and execute the SQL statement
     $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        die("Preparation failed: " . $conn->error);
+    }
+
     $stmt->bind_param("ss", $playerInitials, $playerInitials);
     $stmt->execute();
-    $result = $stmt->get_result(); // result from query
-    $row = $result->fetch_assoc(); // keys are the table column names
-
-    if ($row) {
-        $personalBestScore = $row['score'];
-        $leastKeyPressesForBestScore = $row['key_presses'];
+    $result = $stmt->get_result(); 
+    
+    if ($result) {
+        $row = $result->fetch_assoc();
+        if ($row) {
+            $personalBestScore = $row['score'];
+            $leastKeyPressesForBestScore = $row['key_presses'];
+        }
+    } else {
+        die("Error executing query: " . $stmt->error);
     }
+
+    $stmt->close();
 }
 
-$stmt->close();
 $conn->close();
 
+// Set content type and output JSON response
+header('Content-Type: application/json');
 $response = [
     'personalBestScore' => $personalBestScore,
-    'leastKeyPressesForBestScore' => $leastKeyPressesForBestScore
+    'leastKeyPressesForBestScore' => $leastKeyPressesForBestScore,
+    'overallHighScore' => $overallHighScore,
+    'overallLeastKeyPresses' => $overallLeastKeyPresses
 ];
-
-header('Content-Type: application/json');
-echo json_encode($response, JSON_NUMERIC_CHECK); // numbers are encoded as numbers
-
-?>
+echo json_encode($response, JSON_NUMERIC_CHECK); 
